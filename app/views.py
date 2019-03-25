@@ -1,5 +1,5 @@
 from app import app
-from flask import Flask, jsonify
+from flask import Flask, jsonify, make_response, request
 
 records = [
     {
@@ -24,7 +24,24 @@ def index():
 def getRec():
     return jsonify({'records': records})
 
+@app.route('/records/', methods=['POST'])
+def createRec():
+    if not request.json or not 'title' in request.json:
+        return make_response(jsonify({'-ERROR-': 'NEED TITLE'}), 400)
+    task = {
+        'id':records[-1]['id'] + 1,
+        'title':request.json['title'],
+        'description': request.json.get('description', ""),
+        'done':False
+    }
+    records.append(task)
+    return jsonify({'records': task}), 201
+
 @app.route('/records/alltasks', methods=['GET'])
 def getTtl():
     response = [item['title'] for item in records]
     return jsonify(response)
+
+@app.errorhandler(404)
+def not_found(error):
+    return make_response(jsonify({'-ERROR-': 'NOT FOUND'}), 404)

@@ -1,0 +1,74 @@
+from flask import Flask, render_template, request, jsonify, abort, redirect
+import plotly.graph_objs as go
+from plotly.utils import PlotlyJSONEncoder
+import json
+import requests
+from pprint import pprint
+import requests_cache
+from flask_pymongo import PyMongo
+
+requests_cache.install_cache('air_api_cache', backend='sqlite', expire_after=36000)
+app = Flask(__name__)
+app.config['MONGO_DBNAME'] = 'myDatabase'
+app.config["MONGO_URI"] = "mongodb://localhost:27017/myDatabase"
+mongo = PyMongo(app)
+
+air_url_template = 'https://api.breezometer.com/air-quality/v2/historical/hourly?lat={lat}&lon={lng}&key={API_KEY}&start_datetime={start}&end_datetime={end}'
+MY_API_KEY = 'd6c882f5b3554498a8e88f04c7006fc8'
+
+@app.route('/downloaddata', methods=['GET'])
+def airchart():
+    my_latitude = request.args.get('lat','51.52369')
+    my_longitude = request.args.get('lng','-0.0395857')
+    my_start = request.args.get('start','2019-03-01T07:00:00Z')
+    my_end = request.args.get('end','2019-03-04T07:00:00Z')
+    air_url = air_url_template.format(lat=my_latitude, lng=my_longitude, API_KEY=MY_API_KEY, start=my_start, end=my_end)
+    resp = requests.get(air_url)
+    respJson = resp.json()['data']
+    star = mongo.db.airData
+    for item in respJson:
+        star_id = star.insert(item)
+        new_star = star.find_one({'_id': star_id})
+        print(new_star)
+    #pprint(resp)
+    if resp.ok:
+        #resp = requests.get(air_url)
+        pprint(resp.json())
+    else:
+        print(resp.reason)
+    return "Done"
+
+@app.route('/list')
+def list():
+    tempData = mongo.db.airData.find({})
+    print(tempData[0])
+    data = []
+    for i in tempData:
+        data.append([i['datetime'], i['indexes']['baqi']['dominant_pollutant']])
+    return render_template('list.html', data = data)
+
+@app.route('/index', methods=['GET'])
+def index():
+    return render_template('index.html')
+
+@app.route('/index/del', methods=['DELETE'])
+def delete():
+    date = request.form.get('Date', None)
+    mongo.db.airData.delete_one({'datetime':date})
+    return redirect('/')
+
+@app.route('/index/add', methods=['POST'])
+def add():
+    date = request.form.get('cDate', None)
+    aqi = request.form.get('cAqi', None)
+    dominant_pollutant = request.form.get('cDP', None)
+    mongo.db.airData.insert({'datetime': date, 'data_available': True, 'indexes': {'baqi': {'display_name': 'BreezoMeter AQI', 'aqi': int(aqi), 'aqi_display': aqi, 'color': '#C7E916', 'category': 'Moderate air quality', 'dominant_pollutant': dominant_pollutant}}})
+    return redirect('/')
+
+
+@app.route('/')
+def hello():
+    return "<h1>HELLO HELLO</h1>"
+
+if __name__=="__main__":
+    app.run(port=8080, debug=True)

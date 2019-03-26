@@ -44,7 +44,7 @@ def list():
     print(tempData[0])
     data = []
     for i in tempData:
-        data.append([i['datetime'], i['indexes']['baqi']['dominant_pollutant']])
+        data.append([i['datetime'], i['indexes']['baqi']['dominant_pollutant'], i['indexes']['baqi']['aqi_display']])
     return render_template('list.html', data = data)
 
 @app.route('/index', methods=['GET'])
@@ -54,8 +54,8 @@ def index():
 @app.route('/index/del', methods=['DELETE'])
 def delete():
     date = request.form.get('Date', None)
-    mongo.db.airData.delete_one({'datetime':date})
-    return redirect('/')
+    mongo.db.airData.delete({'datetime':date})
+    return redirect('/index')
 
 @app.route('/index/add', methods=['POST'])
 def add():
@@ -63,8 +63,24 @@ def add():
     aqi = request.form.get('cAqi', None)
     dominant_pollutant = request.form.get('cDP', None)
     mongo.db.airData.insert({'datetime': date, 'data_available': True, 'indexes': {'baqi': {'display_name': 'BreezoMeter AQI', 'aqi': int(aqi), 'aqi_display': aqi, 'color': '#C7E916', 'category': 'Moderate air quality', 'dominant_pollutant': dominant_pollutant}}})
-    return redirect('/')
+    return redirect('/index')
 
+@app.route('/index/upd', methods=['PUT'])
+def upd():
+    date = request.form.get('uDate', None)
+    aqi = request.form.get('uAqi', None)
+    dominant_pollutant = request.form.get('uDP', None)
+    mongo.db.airData.update(
+        {'datetime':date},
+        {
+            '$set':{
+                'aqi':int(aqi),
+                'aqi_display':aqi,
+                'dominant_pollutant':dominant_pollutant
+            }
+        }
+    )
+    return redirect('/index')
 
 @app.route('/')
 def hello():

@@ -14,31 +14,52 @@ app.config["MONGO_URI"] = "mongodb://localhost:27017/myDatabase"
 mongo = PyMongo(app)
 
 air_url_template = 'https://api.breezometer.com/air-quality/v2/historical/hourly?lat={lat}&lon={lng}&key={API_KEY}&start_datetime={start}&end_datetime={end}'
-MY_API_KEY = 'd6c882f5b3554498a8e88f04c7006f'
+MY_API_KEY = 'd6c882f5b3554498a8e88f04c7006fc8'
 
-@app.route('/downloaddata', methods=['GET'])
+# @app.route('/downloaddata', methods=['GET'])
+# def airchart():
+#     my_latitude = request.args.get('lat','51.52369')
+#     my_longitude = request.args.get('lng','-0.0395857')
+#     my_start = request.args.get('start','2019-03-20T07:00:00Z')
+#     my_end = request.args.get('end','2019-03-23T07:00:00Z')
+#     air_url = air_url_template.format(lat=my_latitude, lng=my_longitude, API_KEY=MY_API_KEY, start=my_start, end=my_end)
+#     resp = requests.get(air_url)
+#     print(resp)
+#     respJson = resp.json()['data']
+#     #star = mongo.db.airData
+#     # for item in respJson:
+#     #     star_id = star.insert(item)
+#     #     new_star = star.find_one({'_id': star_id})
+#     #     print(item)
+#     #pprint(resp)
+#     if resp.ok:
+#         resp = requests.get(air_url)
+#         pprint(resp.json())
+#         print(resp.json())
+#     else:
+#         print(resp.reason)
+#     return "Done"
+
+@app.route('/airqualitychart', methods=['GET'])
 def airchart():
     my_latitude = request.args.get('lat','51.52369')
     my_longitude = request.args.get('lng','-0.0395857')
     my_start = request.args.get('start','2019-03-07T07:00:00Z')
-    my_end = request.args.get('end','2019-03-10T07:00:00Z')
+    my_end = request.args.get('end','2019-03-09T07:00:00Z')
     air_url = air_url_template.format(lat=my_latitude, lng=my_longitude, API_KEY=MY_API_KEY, start=my_start, end=my_end)
     resp = requests.get(air_url)
-    print(resp)
     respJson = resp.json()['data']
-    #star = mongo.db.airData
-    # for item in respJson:
-    #     star_id = star.insert(item)
-    #     new_star = star.find_one({'_id': star_id})
-    #     print(item)
-    #pprint(resp)
+    print(respJson)
+    respJson = resp.json()['data']
+    for item in respJson:
+        sql = """INSERT INTO airqual.stats(DateTime, AQI, Category, Color, dName, DominantPollut) VALUES('{}', {}, '{}', '{}', '{}', '{}')""".format(str(item['datetime']), str(item['indexes']['baqi']['aqi']), str(item['indexes']['baqi']['category']),str(item['indexes']['baqi']['color']), str(item['indexes']['baqi']['display_name']),str(item['indexes']['baqi']['dominant_pollutant']))
+        print(sql)
     if resp.ok:
         resp = requests.get(air_url)
         pprint(resp.json())
-        print(resp.json())
     else:
         print(resp.reason)
-    return "Done"
+    return ("Done!")
 
 @app.route('/list')
 def list():
